@@ -1,6 +1,8 @@
 import 'package:WOLapp/iconset.dart';
 import 'package:WOLapp/models/machine_definition.dart';
+import 'package:WOLapp/packet_sender.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 void main() {
   runApp(WolApp());
@@ -32,7 +34,7 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
     new MachineDefinition(
         macAddress: "12:34:56:78:9A:BC",
         caption: "Server",
-        ipAddress: "192.168.123.255",
+        ipAddress: "255.255.255.255",
         port: 9)
   ];
 
@@ -41,7 +43,7 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
       _machineDefinitions.add(new MachineDefinition(
           macAddress: "12:34:56:78:9A:BC",
           caption: "Server " + _machineDefinitions.length.toString(),
-          ipAddress: "192.168.123.255",
+          ipAddress: "255.255.255.255",
           port: 9,
           icon: iconDefinitions.keys
               .elementAt(_machineDefinitions.length % iconDefinitions.length)));
@@ -60,9 +62,30 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
           children: _machineDefinitions
               .map((machine) => ListTile(
                     leading: Icon(machine.getIcon(),
-                        color: machine.color ?? Theme.of(context).textTheme.bodyText2.color),
+                        color: machine.color ??
+                            Theme.of(context).textTheme.bodyText2.color),
                     title: Text(machine.getCaption()),
-                    trailing: Icon(Icons.power_settings_new),
+                    trailing: IconButton(
+                      icon: Icon(Icons.power_settings_new,
+                          semanticLabel: "Send wake packet"),
+                      onPressed: () async {
+                        try {
+                          await sendWakeUpPacket(
+                              machine.macAddress,
+                              machine.ipAddress,
+                              machine.port,
+                              machine.password);
+                          Fluttertoast.showToast(msg: "Wakeup packet sent");
+                        } catch (e) {
+                          Fluttertoast.showToast(
+                              msg: "Error sending wakeup packet",
+                              backgroundColor: Colors.redAccent);
+                        }
+                      },
+                    ),
+                    onTap: () {
+                      Fluttertoast.showToast(msg: "detail");
+                    },
                   ))
               .toList(growable: false),
         ),
