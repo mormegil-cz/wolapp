@@ -2,11 +2,14 @@ import 'dart:io';
 
 import 'package:WOLapp/models/machine_definition.dart';
 import 'package:WOLapp/packet_sender.dart';
+import 'package:WOLapp/storage/machine_store.dart';
+import 'package:WOLapp/storage/sqlite_store.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 
 final RegExp reMacAddress =
     RegExp(r'^((([0-9A-F]{2}-){5}[0-9A-F]{2})|(([0-9A-F]{2}:){5}[0-9A-F]{2}))$', caseSensitive: false);
+
+final MachineStore machineStore = new SqliteMachineStore();
 
 void main() {
   runApp(WolApp());
@@ -16,10 +19,8 @@ class WolApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
         title: 'WOLApp',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-        ),
+        theme: ThemeData.light(),
+        darkTheme: ThemeData.dark(),
         home: MachineSelectionList(),
       );
 }
@@ -32,14 +33,17 @@ class MachineSelectionList extends StatefulWidget {
 }
 
 class _MachineSelectionListState extends State<MachineSelectionList> {
-  final List<MachineDefinition> _machineDefinitions = [
-    new MachineDefinition(
-        machineIndex: 0,
-        macAddress: "12:34:56:78:9A:BC",
-        caption: "Server",
-        ipAddress: "255.255.255.255",
-        port: 9)
-  ];
+  List<MachineDefinition> _machineDefinitions;
+
+  _MachineSelectionListState() {
+    machineStore.loadMachines().then(_loadedFromDb);
+  }
+
+  void _loadedFromDb(List<MachineDefinition> definitions) {
+    setState(() {
+      _machineDefinitions = definitions;
+    });
+  }
 
   void _editMachine(BuildContext context, MachineDefinition definition) {
     Navigator.of(context).push(PageRouteBuilder(
@@ -64,12 +68,14 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
       } else {
         _machineDefinitions[definition.machineIndex] = definition;
       }
+      machineStore.storeMachines(_machineDefinitions);
     });
   }
 
   void _deleteMachine(int deletedMachine) {
     setState(() {
       _machineDefinitions.removeAt(deletedMachine);
+      machineStore.storeMachines(_machineDefinitions);
     });
   }
 
@@ -78,46 +84,56 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
         appBar: AppBar(
           title: Text("WOLApp"),
         ),
-        body: _machineDefinitions.isEmpty
-            ? Center(
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text("No machines defined!"),
-                  Text("Press the button to add a first one!"),
-                ]),
-              )
-            : Scrollbar(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  children: _machineDefinitions
-                      .map((machine) => ListTile(
-                            leading: Icon(machine.getIcon(),
-                                color: machine.color ?? Theme.of(context).textTheme.bodyText2.color),
-                            title: Text(machine.getCaption()),
-                            trailing: IconButton(
-                              icon: Icon(Icons.power_settings_new, semanticLabel: "Send wake packet"),
-                              onPressed: () async {
-                                try {
-                                  await sendWakeUpPacket(
-                                      machine.macAddress, machine.ipAddress, machine.port, machine.password);
-                                  Fluttertoast.showToast(msg: "Wakeup packet sent");
-                                } catch (e) {
-                                  Fluttertoast.showToast(
-                                      msg: "Error sending wakeup packet", backgroundColor: Colors.redAccent);
-                                }
-                              },
-                            ),
-                            onTap: () {
-                              _editMachine(context, machine);
-                            },
-                          ))
-                      .toList(growable: false),
-                ),
-              ),
+        body: _machineDefinitions == null
+            ? Center(child: CircularProgressIndicator())
+            : _machineDefinitions.isEmpty
+                ? Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text("No machines defined!"),
+                      Text("Press the button to add a first one!"),
+                    ]),
+                  )
+                : Scrollbar(
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      children: _machineDefinitions
+                          .map((machine) => MachineListTile(machine: machine, onTap: _editMachine))
+                          .toList(growable: false),
+                    ),
+                  ),
         floatingActionButton: FloatingActionButton(
           onPressed: () => {_editMachine(context, new MachineDefinition(machineIndex: -1))},
           tooltip: 'Add new machine',
           child: Icon(Icons.add),
         ),
+      );
+}
+
+class MachineListTile extends StatelessWidget {
+  final MachineDefinition machine;
+  final void Function(BuildContext buildContext, MachineDefinition machine) onTap;
+
+  const MachineListTile({Key key, this.machine, this.onTap}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        leading: Icon(machine.getIcon(), color: machine.color ?? Theme.of(context).textTheme.bodyText2.color),
+        title: Text(machine.getCaption()),
+        trailing: IconButton(
+          icon: Icon(Icons.power_settings_new, semanticLabel: "Send wake packet"),
+          onPressed: () async {
+            try {
+              await sendWakeUpPacket(machine.macAddress, machine.ipAddress, machine.port, machine.password);
+              Scaffold.of(context).showSnackBar(SnackBar(content: Text("Wakeup packet for ${machine.getCaption()} sent")));
+            } catch (e) {
+              Scaffold.of(context).showSnackBar(
+                  SnackBar(content: Text("Error sending wakeup packet"), backgroundColor: Colors.redAccent));
+            }
+          },
+        ),
+        onTap: () {
+          this.onTap(context, machine);
+        },
       );
 }
 
