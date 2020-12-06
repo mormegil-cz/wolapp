@@ -5,24 +5,33 @@ import 'package:WOLapp/packet_sender.dart';
 import 'package:WOLapp/storage/machine_store.dart';
 import 'package:WOLapp/storage/sqlite_store.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info/package_info.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-final RegExp reMacAddress =
-    RegExp(r'^((([0-9A-F]{2}-){5}[0-9A-F]{2})|(([0-9A-F]{2}:){5}[0-9A-F]{2}))$', caseSensitive: false);
+final RegExp reMacAddress = RegExp(
+    r'^((([0-9A-F]{2}-){5}[0-9A-F]{2})|(([0-9A-F]{2}:){5}[0-9A-F]{2}))$',
+    caseSensitive: false);
 
 final MachineStore machineStore = new SqliteMachineStore();
+PackageInfo packageInfo;
 
-void main() {
+void main() async {
   runApp(WolApp());
 }
 
 class WolApp extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => MaterialApp(
-        title: 'WOLApp',
-        theme: ThemeData.light(),
-        darkTheme: ThemeData.dark(),
-        home: MachineSelectionList(),
-      );
+  Widget build(BuildContext context) {
+    if (packageInfo == null) {
+      PackageInfo.fromPlatform().then((value) => packageInfo = value);
+    }
+    return MaterialApp(
+      title: 'WOLApp',
+      theme: ThemeData.light(),
+      darkTheme: ThemeData.dark(),
+      home: MachineSelectionList(),
+    );
+  }
 }
 
 class MachineSelectionList extends StatefulWidget {
@@ -47,8 +56,10 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
 
   void _editMachine(BuildContext context, MachineDefinition definition) {
     Navigator.of(context).push(PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) =>
-          MachineEditForm(definition, onSave: _saveModifiedDefinition, onDelete: _deleteMachine),
+      pageBuilder: (context, animation, secondaryAnimation) => MachineEditForm(
+          definition,
+          onSave: _saveModifiedDefinition,
+          onDelete: _deleteMachine),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final tween = Tween(begin: Offset(0.0, 1.0), end: Offset.zero);
         final offsetAnimation = animation.drive(tween);
@@ -79,10 +90,48 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
     });
   }
 
+  static void _launchURL(String url) async {
+    if (true || await canLaunch(url)) {
+      await launch(url);
+    } else {
+      throw 'Could not launch $url';
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           title: Text("WOLApp"),
+        ),
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              DrawerHeader(
+                child: Text('WOL App'),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
+              ListTile(
+                title: Text('About'),
+                onTap: () {
+                  Navigator.pop(context);
+                  showAboutDialog(
+                      context: context,
+                      applicationName: "WOL App",
+                      applicationVersion: packageInfo.version,
+                      children: <Widget>[
+                        FlatButton(
+                          onPressed: () =>
+                              launch("https://github.com/mormegil-cz/wolapp"),
+                          child: Text("GitHub"),
+                        ),
+                      ]);
+                },
+              )
+            ],
+          ),
         ),
         body: _machineDefinitions == null
             ? Center(child: CircularProgressIndicator())
@@ -97,12 +146,14 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
                     child: ListView(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       children: _machineDefinitions
-                          .map((machine) => MachineListTile(machine: machine, onTap: _editMachine))
+                          .map((machine) => MachineListTile(
+                              machine: machine, onTap: _editMachine))
                           .toList(growable: false),
                     ),
                   ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => {_editMachine(context, new MachineDefinition(machineIndex: -1))},
+          onPressed: () =>
+              {_editMachine(context, new MachineDefinition(machineIndex: -1))},
           tooltip: 'Add new machine',
           child: Icon(Icons.add),
         ),
@@ -111,23 +162,31 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
 
 class MachineListTile extends StatelessWidget {
   final MachineDefinition machine;
-  final void Function(BuildContext buildContext, MachineDefinition machine) onTap;
+  final void Function(BuildContext buildContext, MachineDefinition machine)
+      onTap;
 
   const MachineListTile({Key key, this.machine, this.onTap}) : super(key: key);
 
   @override
   Widget build(BuildContext context) => ListTile(
-        leading: Icon(machine.getIcon(), color: machine.color ?? Theme.of(context).textTheme.bodyText2.color),
+        leading: Icon(machine.getIcon(),
+            color:
+                machine.color ?? Theme.of(context).textTheme.bodyText2.color),
         title: Text(machine.getCaption()),
         trailing: IconButton(
-          icon: Icon(Icons.power_settings_new, semanticLabel: "Send wake packet"),
+          icon:
+              Icon(Icons.power_settings_new, semanticLabel: "Send wake packet"),
           onPressed: () async {
             try {
-              await sendWakeUpPacket(machine.macAddress, machine.ipAddress, machine.port, machine.password);
-              Scaffold.of(context).showSnackBar(SnackBar(content: Text("Wakeup packet for ${machine.getCaption()} sent")));
+              await sendWakeUpPacket(machine.macAddress, machine.ipAddress,
+                  machine.port, machine.password);
+              Scaffold.of(context).showSnackBar(SnackBar(
+                  content:
+                      Text("Wakeup packet for ${machine.getCaption()} sent")));
             } catch (e) {
-              Scaffold.of(context).showSnackBar(
-                  SnackBar(content: Text("Error sending wakeup packet"), backgroundColor: Colors.redAccent));
+              Scaffold.of(context).showSnackBar(SnackBar(
+                  content: Text("Error sending wakeup packet"),
+                  backgroundColor: Colors.redAccent));
             }
           },
         ),
@@ -145,7 +204,8 @@ class MachineEditForm extends StatefulWidget {
   MachineEditForm(this.definition, {this.onSave, this.onDelete});
 
   @override
-  _MachineEditFormState createState() => _MachineEditFormState(definition, onSave: onSave, onDelete: onDelete);
+  _MachineEditFormState createState() =>
+      _MachineEditFormState(definition, onSave: onSave, onDelete: onDelete);
 }
 
 class _MachineEditFormState extends State<MachineEditForm> {
@@ -161,12 +221,15 @@ class _MachineEditFormState extends State<MachineEditForm> {
   final TextEditingController _ctrlPortNumber;
   final TextEditingController _ctrlPassword;
 
-  _MachineEditFormState(MachineDefinition definition, {this.onSave, this.onDelete})
+  _MachineEditFormState(MachineDefinition definition,
+      {this.onSave, this.onDelete})
       : _editedIndex = definition.machineIndex,
         _ctrlCaption = TextEditingController(text: definition.caption),
         _ctrlMacAddress = TextEditingController(text: definition.macAddress),
-        _ctrlIpAddress = TextEditingController(text: definition.ipAddress ?? "255.255.255.255"),
-        _ctrlPortNumber = TextEditingController(text: definition.port?.toString() ?? "9"),
+        _ctrlIpAddress = TextEditingController(
+            text: definition.ipAddress ?? "255.255.255.255"),
+        _ctrlPortNumber =
+            TextEditingController(text: definition.port?.toString() ?? "9"),
         _ctrlPassword = TextEditingController(text: definition.password);
 
   @override
@@ -182,7 +245,9 @@ class _MachineEditFormState extends State<MachineEditForm> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(
-        title: Text(_editedIndex < 0 ? "WOLApp: Add new machine" : "WOLApp: Edit machine"),
+        title: Text(_editedIndex < 0
+            ? "WOLApp: Add new machine"
+            : "WOLApp: Edit machine"),
         actions: [
           if (_editedIndex >= 0)
             IconButton(
@@ -278,7 +343,8 @@ class _MachineEditFormState extends State<MachineEditForm> {
     if (value.isEmpty) return 'This is a required field';
     final parsedPort = int.tryParse(value);
     if (parsedPort == null) return 'Enter a valid port number';
-    if (parsedPort < 0 || parsedPort > 65535) return 'Enter a valid port between 0 and 65535';
+    if (parsedPort < 0 || parsedPort > 65535)
+      return 'Enter a valid port between 0 and 65535';
     return null;
   }
 }
