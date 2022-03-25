@@ -90,14 +90,6 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
     });
   }
 
-  static void _launchURL(String url) async {
-    if (true || await canLaunch(url)) {
-      await launch(url);
-    } else {
-      throw 'Could not launch $url';
-    }
-  }
-
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
@@ -122,14 +114,14 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
                       applicationName: "WOL App",
                       applicationVersion: packageInfo.version,
                       children: <Widget>[
-                        FlatButton(
+                        TextButton(
                           onPressed: () =>
                               launch("https://github.com/mormegil-cz/wolapp"),
                           child: Text("GitHub"),
                         ),
                       ]);
                 },
-              )
+              ),
             ],
           ),
         ),
@@ -180,11 +172,11 @@ class MachineListTile extends StatelessWidget {
             try {
               await sendWakeUpPacket(machine.macAddress, machine.ipAddress,
                   machine.port, machine.password);
-              Scaffold.of(context).showSnackBar(SnackBar(
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content:
                       Text("Wakeup packet for ${machine.getCaption()} sent")));
             } catch (e) {
-              Scaffold.of(context).showSnackBar(SnackBar(
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text("Error sending wakeup packet"),
                   backgroundColor: Colors.redAccent));
             }
