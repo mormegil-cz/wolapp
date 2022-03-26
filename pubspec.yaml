@@ -1,4 +1,4 @@
-name: WOLapp
+name: wol_app
 description: Wake-on-LAN mobile app
 
 # The following line prevents the package from being accidentally published to
@@ -18,20 +18,23 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.7.0 <3.0.0"
+  sdk: ">=2.16.1 <3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  package_info:
+  file_picker:
+  package_info_plus:
   path:
+  path_provider:
+  share_plus:
   sqflite:
   url_launcher:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.0
+  cupertino_icons: ^1.0.2
 
 dev_dependencies:
   flutter_test:

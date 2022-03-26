@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-final String DEFAULT_ICON = "computer";
+const String DEFAULT_ICON = "computer";
 
 final Map<String, IconData> iconDefinitions = {
   "computer": Icons.computer,

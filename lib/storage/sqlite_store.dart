@@ -1,8 +1,10 @@
-import 'package:WOLapp/models/machine_definition.dart';
-import 'package:WOLapp/storage/machine_store.dart';
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:wol_app/models/machine_definition.dart';
+import 'package:wol_app/storage/machine_store.dart';
 
 class SqliteMachineStore implements MachineStore {
   Future<T> runWithDatabase<T>(Future<T> action(Database d)) async {
@@ -21,13 +23,24 @@ class SqliteMachineStore implements MachineStore {
     return dbResultList.map(_machineFromDb).toList();
   }
 
-  Future<void> storeMachines(List<MachineDefinition> machines) async {
+  Future<void> storeMachines(Iterable<MachineDefinition> machines) async {
     await runWithDatabase((database) => database.transaction((txn) async {
           await txn.execute("DELETE FROM machines");
           for (final MachineDefinition machine in machines) {
             txn.insert("machines", _machineToDb(machine));
           }
         }));
+  }
+
+  Future<String> exportMachinesJson() async {
+    final dbResultList = await runWithDatabase((database) => database.rawQuery("SELECT * FROM machines"));
+    return json.encode(dbResultList);
+  }
+
+  Future<void> importMachinesJson(String importJson) async {
+    final List<Map<String, dynamic>> jsonResultList = json.decode(importJson);
+    final loadedMachines = jsonResultList.map(_machineFromDb);
+    await storeMachines(loadedMachines);
   }
 
   static MachineDefinition _machineFromDb(Map<String, dynamic> row) => new MachineDefinition(
@@ -51,5 +64,5 @@ class SqliteMachineStore implements MachineStore {
         "password": machine.password
       };
 
-  static Color _parseColor(int dbColor) => dbColor == null ? null : Color(dbColor);
+  static Color? _parseColor(int? dbColor) => dbColor == null ? null : Color(dbColor);
 }
