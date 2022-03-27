@@ -141,7 +141,10 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
                   if (pickedFile != null) {
                     final fileBytes = pickedFile.files.first.bytes!;
                     final importJson = new Utf8Decoder().convert(fileBytes);
-                    await machineStore.importMachinesJson(importJson);
+                    final importedMachines = await machineStore.importMachinesJson(importJson);
+                    setState(() {
+                      _machineDefinitions = importedMachines;
+                    });
                   }
                 },
               ),

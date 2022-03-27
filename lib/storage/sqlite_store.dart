@@ -37,10 +37,11 @@ class SqliteMachineStore implements MachineStore {
     return json.encode(dbResultList);
   }
 
-  Future<void> importMachinesJson(String importJson) async {
-    final List<Map<String, dynamic>> jsonResultList = json.decode(importJson);
-    final loadedMachines = jsonResultList.map(_machineFromDb);
+  Future<List<MachineDefinition>> importMachinesJson(String importJson) async {
+    final List<dynamic> jsonResultList = json.decode(importJson);
+    final loadedMachines = jsonResultList.map((row) => _machineFromDb(row)).toList();
     await storeMachines(loadedMachines);
+    return loadedMachines;
   }
 
   static MachineDefinition _machineFromDb(Map<String, dynamic> row) => new MachineDefinition(

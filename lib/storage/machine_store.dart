@@ -7,5 +7,5 @@ abstract class MachineStore {
 
   Future<String> exportMachinesJson();
 
-  Future<void> importMachinesJson(String importJson);
+  Future<List<MachineDefinition>> importMachinesJson(String importJson);
 }
