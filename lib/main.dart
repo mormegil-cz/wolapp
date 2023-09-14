@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:wol_app/models/machine_definition.dart';
 import 'package:wol_app/packet_sender.dart';
 import 'package:wol_app/storage/machine_store.dart';
@@ -112,7 +112,7 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
                   Navigator.pop(context);
                   showAboutDialog(context: context, applicationName: "WOL App", applicationVersion: packageInfo!.version, children: <Widget>[
                     TextButton(
-                      onPressed: () => launch("https://github.com/mormegil-cz/wolapp"),
+                      onPressed: () => launchUrlString("https://github.com/mormegil-cz/wolapp"),
                       child: Text("GitHub"),
                     ),
                   ]);
@@ -127,7 +127,7 @@ class _MachineSelectionListState extends State<MachineSelectionList> {
                   final tempDir = await getTemporaryDirectory();
                   final jsonFile = File('${tempDir.path}/wolapp-export.json');
                   await jsonFile.writeAsString(exportJson, mode: FileMode.writeOnly);
-                  await Share.shareFilesWithResult([jsonFile.path], mimeTypes: ['application/octet-stream'], subject: 'WOL App machine export');
+                  await Share.shareXFiles([XFile(jsonFile.path, mimeType: 'application/octet-stream')], subject: 'WOL App machine export');
                   await jsonFile.delete();
                 },
               ),
@@ -183,7 +183,7 @@ class MachineListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        leading: Icon(machine.getIcon(), color: machine.color ?? Theme.of(context).textTheme.bodyText2?.color),
+        leading: Icon(machine.getIcon(), color: machine.color ?? Theme.of(context).textTheme.bodyMedium?.color),
         title: Text(machine.getCaption()!),
         trailing: IconButton(
           icon: Icon(Icons.power_settings_new, semanticLabel: "Send wake packet"),

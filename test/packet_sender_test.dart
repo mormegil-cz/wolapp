@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:WOLapp/packet_sender.dart';
+import 'package:wol_app/packet_sender.dart';
 
 void main() {
   test('MAC parsing', () {
